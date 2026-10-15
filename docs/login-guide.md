@@ -5,7 +5,7 @@ Claude Code 首次运行需要浏览器完成 OAuth 授权。登录会话的
 
 ## 方案 A：本机 GUI 浏览器（推荐，WSL2/Linux 桌面）
 
-用 `claude-browser`（见 shell/zshrc.snippet）：独立 Chrome profile +
+用 `claude-browser`（见 shell/claude-env.sh / claude-env.fish）：独立 Chrome profile +
 `TZ` 注入 + 继承 mihomo 代理。浏览器 JS 上报的时区/语言与出口 IP 天然一致。
 
 ```bash

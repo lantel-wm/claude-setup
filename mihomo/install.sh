@@ -95,5 +95,5 @@ cat << 'EOF'
   2. systemctl --user restart mihomo
   3. 验证出口：curl -x http://127.0.0.1:7890 https://ipinfo.io
      （应显示你选定的支持地区 IP）
-  4. 把 shell/zshrc.snippet 追加到 ~/.zshrc
+  4. 把 shell/claude-env.sh 加进你的 shell 配置（bash/zsh source，fish 拷 conf.d）
 EOF
