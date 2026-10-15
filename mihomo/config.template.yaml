@@ -1,0 +1,174 @@
+# mihomo 通用配置模板 —— Claude Code 防封版
+#
+# 使用方法：
+#   1. cp 到 ~/.config/mihomo/config.yaml
+#   2. 替换所有 {{占位符}}
+#   3. 重启：systemctl --user restart mihomo
+#
+# ★ 核心设计（改动前先理解）：
+#   - Claude 组是 select 类型且只锁定一个节点 —— 出口 IP 必须固定，禁止自动测速
+#   - 内网/私有 IP 直连 —— 防止公司内网服务被误路由到代理
+#   - Anthropic 域名（含遥测域名）全部走 Claude 组 —— 同一出口，指纹一致
+#   - DNS 用 fake-ip + DoH —— 防止 DNS 泄露真实位置
+#   - IPv6 全关 —— 防止流量绕过代理
+
+mixed-port: 7890
+allow-lan: false
+bind-address: 127.0.0.1
+mode: rule
+log-level: info
+ipv6: false
+external-controller: 127.0.0.1:9090
+unified-delay: true
+tcp-concurrent: true
+profile:
+  store-selected: true   # 记住手动选中的节点，重启不丢（防回退到旧默认）
+
+geo-auto-update: false
+
+dns:
+  enable: true
+  listen: 127.0.0.1:1053
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - "*.lan"
+    - "+.local"
+    - "+.stun.*.*"
+    - "+.stun.*.*.*"
+    - "+.stun.*.*.*.*"
+    - "time.*.com"
+    - "+.ntp.org"
+    # ↓ 公司/学校内网域名必须加进来（不做 fake-ip），没有就删掉这两行
+    # - "+.your-corp.com"
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  proxy-server-nameserver:      # 解析代理服务器自身域名，用国内 DoH
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+  nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+  fallback:                     # 非中国域名走这里（经代理解析，不泄露）
+    - https://1.1.1.1/dns-query
+    - https://8.8.8.8/dns-query
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+  # ↓ 内网域名必须用系统 DNS 解析（DoH 查不到内网 IP），没有就删掉
+  # nameserver-policy:
+  #   "+.your-corp.com": system
+
+# ═══════════════════════════════════════════════════════════════
+# 节点定义 —— 三选一，按你的代理类型
+# ═══════════════════════════════════════════════════════════════
+
+# ── 方式 A：手动写节点（照抄你代理商给的参数）──
+# 下面是常见协议的模板，删掉不用的，替换 {{占位符}}
+
+proxies:
+  # SS (shadowsocks)
+  - name: "{{节点名-地区}}"
+    type: ss
+    server: {{服务器IP或域名}}
+    port: {{端口}}
+    cipher: {{加密方式, 如 aes-256-gcm}}
+    password: "{{密码}}"
+    udp: true
+
+  # VLESS + Reality
+  - name: "{{节点名2-地区}}"
+    type: vless
+    server: {{服务器}}
+    port: {{端口}}
+    uuid: {{uuid}}
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: {{SNI域名}}
+    reality-opts:
+      public-key: {{reality公钥}}
+      short-id: "{{short-id}}"
+    client-fingerprint: chrome
+
+  # VMess + WS + TLS（另一种常见形态）
+  # - name: "{{节点名3-地区}}"
+  #   type: vmess
+  #   server: {{服务器}}
+  #   port: 443
+  #   uuid: {{uuid}}
+  #   alterId: 0
+  #   cipher: auto
+  #   network: ws
+  #   tls: true
+  #   servername: {{SNI域名}}
+  #   ws-opts:
+  #     path: {{路径}}
+  #   udp: true
+
+# ── 方式 B：机场 Clash 订阅（proxy-providers 自动拉取节点列表）──
+# 取消下面的注释，填订阅链接；同时把上面 proxies: 整段删掉或保留手动节点
+# 注意：providers 拉下来的文件含节点凭证，已在 .gitignore 里排除，别提交
+#
+# proxy-providers:
+#   my-sub:
+#     type: http
+#     url: "{{你的Clash订阅链接}}"
+#     interval: 86400
+#     path: ./providers/my-sub.yaml
+#     health-check:
+#       enable: true
+#       url: "https://www.gstatic.com/generate_204"
+#       interval: 600
+
+proxy-groups:
+  # ★ Claude 专用组：select 类型，第一个成员就是默认锁定节点
+  #   - 选定后永不更换；换节点 = 换出口 IP = 风控信号
+  #   - 用 providers 的话，把 proxies 换成 use: [my-sub]，
+  #     但仍建议手动列出你选定的节点名放第一位
+  - name: "Claude"
+    type: select
+    proxies:
+      - "{{你的固定节点名-必须是支持地区}}"
+      # 备用节点排后面（仅主节点故障时手动切换，切完就固定住）
+      - "{{备用节点名}}"
+
+  # 一般流量组：日常上网用，可以 url-test 自动测速（不影响 Claude）
+  # 用 providers：把 proxies 换成 use: [my-sub]
+  - name: "PROXY"
+    type: url-test
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
+    proxies:
+      - "{{你的固定节点名-必须是支持地区}}"
+      - "{{备用节点名}}"
+
+rules:
+  # ── 1. 内网/私有网段直连（必须放最前面）──
+  # 有公司内网域名的话加： - DOMAIN-SUFFIX,your-corp.com,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,fc00::/7,DIRECT,no-resolve
+
+  # ── 2. Anthropic 全家桶 → Claude 组（同一固定出口）──
+  # 遥测域名也必须走同一出口，否则指纹不一致
+  - DOMAIN-KEYWORD,anthropic,Claude
+  - DOMAIN-SUFFIX,claude.ai,Claude
+  - DOMAIN-SUFFIX,claudeusercontent.com,Claude
+  - DOMAIN-SUFFIX,statsig.com,Claude      # Claude 遥测/功能标志
+  - DOMAIN-SUFFIX,sentry.io,Claude        # 错误上报
+  - DOMAIN-SUFFIX,amplitude.com,Claude
+
+  # ── 3. 国内直连 ──
+  - GEOIP,CN,DIRECT
+
+  # ── 4. 其余走一般代理组 ──
+  - MATCH,PROXY

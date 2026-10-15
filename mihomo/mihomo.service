@@ -1,0 +1,15 @@
+# mihomo systemd 用户服务（由 install.sh 自动部署，此处仅作备份参考）
+# 部署位置: ~/.config/systemd/user/mihomo.service
+
+[Unit]
+Description=mihomo Proxy Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/mihomo -d %h/.config/mihomo
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,38 @@
+# >>> claude-antiban 代理与防护环境 >>>
+# 来源: claude-antiban repo (shell/zshrc.snippet)
+# 功能: 代理开关(默认开) + Claude Code 防护 alias + OAuth 登录专用浏览器
+
+# ── 代理开关 ──
+proxy_on() {
+  export http_proxy="http://127.0.0.1:7890"
+  export https_proxy="http://127.0.0.1:7890"
+  export HTTP_PROXY="$http_proxy"
+  export HTTPS_PROXY="$https_proxy"
+  # ↓ 按需修改：公司内网域名/网段加进来，避免被代理误伤
+  export no_proxy="localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  export NO_PROXY="$no_proxy"
+  echo "proxy on -> 127.0.0.1:7890"
+}
+proxy_off() {
+  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY
+  echo "proxy off"
+}
+# 默认开启（新终端自动走代理）
+proxy_on > /dev/null
+
+# ── Claude Code 防护启动 ──
+# TZ: 与出口 IP 地区一致（洛杉矶=America/Los_Angeles，东京=Asia/Tokyo，按实际改）
+# LANG: 英语环境，避免区域信号
+# 遥测总开关: 官方合法选项，关闭 Statsig/Datadog 上报
+alias claude='TZ=America/Los_Angeles LANG=en_US.UTF-8 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL=1 claude'
+
+# ── OAuth 登录专用浏览器（需要 GUI；WSL2 用 WSLg，服务器见 docs/login-guide.md）──
+# 独立 profile + TZ 注入：浏览器 JS 上报的时区/语言与出口 IP 一致
+# 依赖: google-chrome（sudo apt install -y google-chrome.deb fonts-noto-cjk）
+claude-browser() {
+  TZ=America/Los_Angeles LANG=en_US.UTF-8 google-chrome \
+    --user-data-dir="$HOME/.config/chrome-claude-profile" \
+    --no-first-run --no-default-browser-check "$@" >/dev/null 2>&1 &!
+}
+
+# <<< claude-antiban <<<

@@ -1,0 +1,9 @@
+# 凭证与本地数据，绝不提交
+providers/
+*.local.yaml
+
+# 系统与编辑器
+.DS_Store
+*.swp
+.idea/
+.vscode/
