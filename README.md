@@ -22,7 +22,8 @@
 │   ├── config.template.yaml  # 通用配置模板（占位符，适配任意代理订阅）
 │   └── mihomo.service        # systemd 用户服务单元
 ├── shell/
-│   └── zshrc.snippet         # 代理开关 + claude 防护 alias + 登录浏览器
+│   ├── claude-env.sh          # 代理开关 + claude 防护 alias + 登录浏览器（bash/zsh 通用）
+│   └── claude-env.fish        # fish 版
 └── docs/
     ├── risk-model.md         # 风控机制与逆向发现（为什么这么配）
     ├── setup-guide.md        # 分步搭建指南（含节点选择决策）
@@ -37,9 +38,9 @@ cp config.template.yaml ~/.config/mihomo/config.yaml
 vim ~/.config/mihomo/config.yaml   # 填入你自己的节点信息（见文件内注释）
 systemctl --user restart mihomo
 
-# 把 shell/zshrc.snippet 的内容追加到 ~/.zshrc，然后：
+# 把 shell/claude-env.sh 加进你的 shell 配置（bash/zsh 通用，fish 用 claude-env.fish），然后：
 npm 或官方脚本安装 claude code
-claude                              # alias 自动注入防护环境变量
+claude                              # alias/函数自动注入防护环境变量
 ```
 
 详细步骤和决策点见 [docs/setup-guide.md](docs/setup-guide.md)。

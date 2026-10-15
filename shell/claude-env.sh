@@ -1,6 +1,11 @@
 # >>> claude-setup 代理与防护环境 >>>
-# 来源: claude-setup repo (shell/zshrc.snippet)
-# 功能: 代理开关(默认开) + Claude Code 防护 alias + OAuth 登录专用浏览器
+# 来源: claude-setup repo (shell/claude-env.sh)
+# 兼容: bash / zsh（POSIX 兼容写法）。fish 用户请用 claude-env.fish
+#
+# 启用方法 —— 在你的 shell 配置文件末尾加一行：
+#   bash: echo "source /path/to/claude-setup/shell/claude-env.sh" >> ~/.bashrc
+#   zsh:  echo "source /path/to/claude-setup/shell/claude-env.sh" >> ~/.zshrc
+# （把 /path/to 换成仓库实际路径；或干脆把本文件内容直接拷进 rc 文件）
 
 # ── 代理开关 ──
 proxy_on() {
@@ -17,7 +22,7 @@ proxy_off() {
   unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY
   echo "proxy off"
 }
-# 默认开启（新终端自动走代理）
+# 默认开启（新 shell 自动走代理）
 proxy_on > /dev/null
 
 # ── Claude Code 防护启动 ──
@@ -32,7 +37,8 @@ alias claude='TZ=America/Los_Angeles LANG=en_US.UTF-8 CLAUDE_CODE_DISABLE_NONESS
 claude-browser() {
   TZ=America/Los_Angeles LANG=en_US.UTF-8 google-chrome \
     --user-data-dir="$HOME/.config/chrome-claude-profile" \
-    --no-first-run --no-default-browser-check "$@" >/dev/null 2>&1 &!
+    --no-first-run --no-default-browser-check "$@" >/dev/null 2>&1 &
+  disown
 }
 
 # <<< claude-setup <<<

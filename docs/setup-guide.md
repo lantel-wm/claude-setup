@@ -59,12 +59,27 @@ curl -X PUT http://127.0.0.1:9090/proxies/Claude -d '{"name":"us-01"}'
 
 ## 第 4 步：Shell 环境
 
+bash / zsh（加一行 source，或直接把文件内容拷进 rc 文件）：
+
 ```bash
-cat shell/zshrc.snippet >> ~/.zshrc
-# 检查冲突：如果 zshrc 里有别的代理管理钩子（企业代理脚本等），删掉避免互相覆盖
-exec zsh   # 或重开终端
-proxy_on   # 确认输出
+echo "source $(pwd)/shell/claude-env.sh" >> ~/.bashrc   # bash
+echo "source $(pwd)/shell/claude-env.sh" >> ~/.zshrc    # zsh
 ```
+
+fish：
+
+```bash
+cp shell/claude-env.fish ~/.config/fish/conf.d/claude-setup.fish
+```
+
+然后重开终端或 `exec $SHELL`，确认：
+
+```bash
+proxy_on    # 输出 proxy on -> 127.0.0.1:7890
+type claude # 应显示 TZ= 注入的完整命令（bash/zsh 为 alias，fish 为函数）
+```
+
+检查冲突：rc 文件里若有别的代理管理钩子（企业代理脚本等），删掉避免互相覆盖。
 
 ## 第 5 步：检查泄露面
 
